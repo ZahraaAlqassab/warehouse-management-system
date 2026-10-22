@@ -1,10 +1,11 @@
 
 package com.warehouse.warehouse_management_system.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMin;
 
 @Entity
 @Table(name = "products")
@@ -13,21 +14,24 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Product name is required")
     @Column(nullable = false, length = 150)
     private String name;
 
+    @NotBlank(message = "SKU is required")
     @Column(nullable = false, unique = true, length = 50)
     private String sku;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @NotNull(message = "Price is required")
+    @DecimalMin(value = "0.0", inclusive = false,
+            message = "Price must be greater than zero")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-
-public Product() {
-}
+public Product() {}
 
 public Product(String name, String sku,
                String description, BigDecimal price) {
@@ -36,7 +40,6 @@ public Product(String name, String sku,
     this.description = description;
     this.price = price;
 }
-
 
 public Long getId() {
     return id;
@@ -73,6 +76,4 @@ public BigDecimal getPrice() {
 public void setPrice(BigDecimal price) {
     this.price = price;
 }
-
-
 }

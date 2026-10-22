@@ -4,10 +4,8 @@ package com.warehouse.warehouse_management_system.service;
 import com.warehouse.warehouse_management_system.model.Product;
 import com.warehouse.warehouse_management_system.repository.ProductRepository;
 import org.springframework.stereotype.Service;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.springframework.http.HttpStatus;
 import java.util.List;
 
 @Service
@@ -23,12 +21,19 @@ public class ProductService {
         return productRepository.findAll();
     }
 
-    public Product saveProduct(Product product) {
-        return productRepository.save(product);
+public Product saveProduct(Product product) {
+
+    if (productRepository.existsBySku(product.getSku())) {
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "Product with this SKU already exists"
+        );
     }
 
-    
-    public Product getProductById(Long id) {
+    return productRepository.save(product);
+}
+
+   public Product getProductById(Long id) {
         return productRepository.findById(id)
          .orElseThrow(() -> new ResponseStatusException(
             HttpStatus.NOT_FOUND,
@@ -36,10 +41,17 @@ public class ProductService {
         ));
 }
 
-
 public Product updateProduct(Long id, Product updatedProduct) {
 
     Product existingProduct = getProductById(id);
+
+    // Kontrollera om SKU redan används av en annan produkt
+    if (productRepository.existsBySkuAndIdNot(updatedProduct.getSku(), id)) {
+        throw new ResponseStatusException(
+            HttpStatus.CONFLICT,
+            "Product with this SKU already exists"
+        );
+    }
 
     existingProduct.setName(updatedProduct.getName());
     existingProduct.setSku(updatedProduct.getSku());
@@ -48,7 +60,6 @@ public Product updateProduct(Long id, Product updatedProduct) {
 
     return productRepository.save(existingProduct);
 }
-
 
 public void deleteProduct(Long id) {
     Product product = getProductById(id);

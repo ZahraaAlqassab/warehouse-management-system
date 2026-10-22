@@ -3,9 +3,8 @@ package com.warehouse.warehouse_management_system.controller;
 
 import com.warehouse.warehouse_management_system.model.Product;
 import com.warehouse.warehouse_management_system.service.ProductService;
-
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
-
 import org.springframework.http.HttpStatus;
 import java.util.List;
 
@@ -25,7 +24,7 @@ public class ProductController {
     }
 
     @PostMapping
-    public Product createProduct(@RequestBody Product product) {
+    public Product createProduct(@Valid @RequestBody Product product) {
         return productService.saveProduct(product);
     }
 
@@ -34,18 +33,17 @@ public class ProductController {
         return productService.getProductById(id);
     }
 
-   @PutMapping("/{id}")
+    @PutMapping("/{id}")
     public Product updateProduct(
-        @PathVariable Long id,
-        @RequestBody Product product) {
+            @PathVariable Long id,
+            @Valid @RequestBody Product product) {
+    
+        return productService.updateProduct(id, product);
+    }
 
-       return productService.updateProduct(id, product);
-}
-
-
-@DeleteMapping("/{id}")
-@ResponseStatus(HttpStatus.NO_CONTENT)
-public void deleteProduct(@PathVariable Long id) {
-    productService.deleteProduct(id);
-}
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+    }
 }
