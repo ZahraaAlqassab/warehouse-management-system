@@ -6,6 +6,7 @@ import com.warehouse.warehouse_management_system.model.Product;
 import com.warehouse.warehouse_management_system.repository.InventoryRepository;
 import com.warehouse.warehouse_management_system.repository.ProductRepository;
 import com.warehouse.warehouse_management_system.service.InventoryService;
+import com.warehouse.warehouse_management_system.service.StockMovementService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -42,10 +43,20 @@ public class InventoryServiceTest {
         ProductRepository productRepository =
                 mock(ProductRepository.class);
 
+        
+     /*
+      * Mock the stock movement service to test inventory
+      * operations without writing movement records to the database.
+      */
+        StockMovementService stockMovementService =
+        mock(StockMovementService.class);
+
+      // Create the inventory service with all dependencies
         InventoryService service = new InventoryService(
                 inventoryRepository,
-                productRepository
-        );
+                productRepository,
+                stockMovementService);
+
 
         Product product = new Product();
         Inventory inventory = new Inventory(product, 10);
@@ -63,11 +74,13 @@ public class InventoryServiceTest {
     }
 
 
+
 /**
  * Tests that stock can be added to an existing inventory.
  *
- * Verifies that the stock quantity increases correctly
- * and that the updated inventory is saved.
+ * Verifies that the stock quantity increases correctly,
+ * the updated inventory is saved, and an incoming
+ * stock movement is recorded.
  */
 @Test
 void shouldAddStock() {
@@ -79,9 +92,14 @@ void shouldAddStock() {
     ProductRepository productRepository =
             mock(ProductRepository.class);
 
-    InventoryService service = new InventoryService(
+            StockMovementService stockMovementService =
+            mock(StockMovementService.class);
+    
+        // Create the service with all required dependencies
+        InventoryService service = new InventoryService(
             inventoryRepository,
-            productRepository
+            productRepository,
+            stockMovementService
     );
 
     Product product = new Product();
@@ -103,13 +121,20 @@ void shouldAddStock() {
     assertEquals(15, result.getQuantity());
 
     verify(inventoryRepository).save(inventory);
+
+    // Verify that an incoming stock movement was recorded
+    verify(stockMovementService).recordMovement(
+        product,
+        "IN",
+        5);
 }
 
 /**
  * Tests that stock can be removed from an existing inventory.
  *
- * Verifies that the stock quantity decreases correctly
- * and that the updated inventory is saved.
+ * Verifies that the stock quantity decreases correctly,
+ * the updated inventory is saved, and an outgoing
+ * stock movement is recorded.
  */
 @Test
 void shouldRemoveStock() {
@@ -121,9 +146,14 @@ void shouldRemoveStock() {
     ProductRepository productRepository =
             mock(ProductRepository.class);
 
+            StockMovementService stockMovementService =
+            mock(StockMovementService.class);
+    
+    // Create the service with all required dependencies
     InventoryService service = new InventoryService(
             inventoryRepository,
-            productRepository
+            productRepository,
+            stockMovementService
     );
 
     Product product = new Product();
@@ -142,6 +172,12 @@ void shouldRemoveStock() {
     assertEquals(7, result.getQuantity());
 
     verify(inventoryRepository).save(inventory);
+
+    // Verify that an outgoing stock movement was recorded
+    verify(stockMovementService).recordMovement(
+        product,
+        "OUT",
+        3);
 }
 
 /**
@@ -161,9 +197,14 @@ void shouldNotRemoveMoreStockThanAvailable() {
     ProductRepository productRepository =
             mock(ProductRepository.class);
 
+            StockMovementService stockMovementService =
+            mock(StockMovementService.class);
+    
+    // Create the service with all required dependencies
     InventoryService service = new InventoryService(
             inventoryRepository,
-            productRepository
+            productRepository,
+            stockMovementService
     );
 
     Product product = new Product();
@@ -204,9 +245,14 @@ void shouldRejectInvalidStockQuantity() {
     ProductRepository productRepository =
             mock(ProductRepository.class);
 
+            StockMovementService stockMovementService =
+            mock(StockMovementService.class);
+    
+    // Create the service with all required dependencies
     InventoryService service = new InventoryService(
             inventoryRepository,
-            productRepository
+            productRepository,
+            stockMovementService
     );
 
     // Act & Assert - Zero quantity
@@ -251,9 +297,14 @@ void shouldRejectInvalidRemoveQuantity() {
     ProductRepository productRepository =
             mock(ProductRepository.class);
 
+            StockMovementService stockMovementService =
+            mock(StockMovementService.class);
+    
+    // Create the service with all required dependencies
     InventoryService service = new InventoryService(
             inventoryRepository,
-            productRepository
+            productRepository,
+            stockMovementService
     );
 
     // Act & Assert - Zero quantity

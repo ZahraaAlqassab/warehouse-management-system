@@ -30,6 +30,7 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final ProductRepository productRepository;
+    private final StockMovementService stockMovementService;
 
        /**
        * Creates an InventoryService with the required repositories.
@@ -39,10 +40,12 @@ public class InventoryService {
        */
         public InventoryService(
            InventoryRepository inventoryRepository,
-           ProductRepository productRepository) {
+           ProductRepository productRepository,
+           StockMovementService stockMovementService) {
 
         this.inventoryRepository = inventoryRepository;
         this.productRepository = productRepository;
+        this.stockMovementService = stockMovementService;
 }
 
        /**
@@ -101,7 +104,16 @@ public class InventoryService {
         );
 
         // Save updated inventory
-        return inventoryRepository.save(inventory);
+        Inventory savedInventory = inventoryRepository.save(inventory);
+
+        // Record the incoming stock movement
+        stockMovementService.recordMovement(
+                product,
+                "IN",
+                quantity
+);
+
+return savedInventory;
 }
 
      /**
@@ -149,6 +161,14 @@ public class InventoryService {
         inventory.setQuantity(inventory.getQuantity() - quantity);
 
         // Save updated inventory
-        return inventoryRepository.save(inventory);
+        Inventory savedInventory = inventoryRepository.save(inventory);
+
+         // Record the outgoing stock movement
+        stockMovementService.recordMovement(
+               inventory.getProduct(),
+               "OUT",
+               quantity);
+
+        return savedInventory;
 }
 }
