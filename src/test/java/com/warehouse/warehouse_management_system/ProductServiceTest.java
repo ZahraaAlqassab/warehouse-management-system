@@ -1,81 +1,85 @@
 package com.warehouse.warehouse_management_system;
 
+import com.warehouse.warehouse_management_system.model.Inventory;
 import com.warehouse.warehouse_management_system.model.Product;
+import com.warehouse.warehouse_management_system.repository.InventoryRepository;
 import com.warehouse.warehouse_management_system.repository.ProductRepository;
 import com.warehouse.warehouse_management_system.service.ProductService;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for the ProductService class.
  *
- * Verifies that product operations work correctly, including
- * creating, retrieving, updating, and deleting products.
+ * Verifies product creation, retrieval, updating, deletion,
+ * SKU validation, and automatic inventory creation.
  *
- * Tests error handling for duplicate SKUs and missing products.
- *
- * Uses JUnit 5 for testing and Mockito to simulate repository
- * behavior without connecting to a real database.
+ * Uses JUnit 5 and Mockito to test business logic
+ * without connecting to a real database.
  */
 public class ProductServiceTest {
-    
+
     /**
-     * Tests that a new product is saved successfully.
-     *
-     * Verifies that the returned product contains the correct
-     * information and that the repository save method is called.
+     * Tests that saving a new product automatically
+     * creates an inventory record with zero quantity.
      */
     @Test
-    void shouldSaveProduct(){
-        
-        //1. Create a fake repository
+    void shouldSaveProduct() {
+
         ProductRepository repository = mock(ProductRepository.class);
+        InventoryRepository inventoryRepository = mock(InventoryRepository.class);
 
-        // 2. Create our service
-        ProductService service = new ProductService(repository);
+        ProductService service =
+                new ProductService(repository, inventoryRepository);
 
-        // 3. create a product
         Product product = new Product(
-            "Laptop",
-            "LAP-001",
-            "Dell laptop",
-            new BigDecimal("7999.99")
+                "Laptop",
+                "LAP-001",
+                "Dell laptop",
+                new BigDecimal("7999.99")
         );
 
-        // 4. Define the mock repository behavior
         when(repository.save(product)).thenReturn(product);
 
-        // 5. Call the method being tested
         Product result = service.saveProduct(product);
 
-        // 6. Verify the result
         assertEquals("Laptop", result.getName());
+
         verify(repository).save(product);
+
+        ArgumentCaptor<Inventory> inventoryCaptor =
+                ArgumentCaptor.forClass(Inventory.class);
+
+        verify(inventoryRepository).save(inventoryCaptor.capture());
+
+        Inventory savedInventory = inventoryCaptor.getValue();
+
+        assertSame(product, savedInventory.getProduct());
+        assertEquals(0, savedInventory.getQuantity());
     }
 
-
     /**
-     * Tests that creating a product with an existing SKU fails.
-     *
-     * Verifies that the service throws a ResponseStatusException
-     * with HTTP status 409 Conflict and does not save the product.
+     * Tests that saving a product with a duplicate SKU
+     * throws HTTP 409 Conflict and does not create inventory.
      */
-
     @Test
     void shouldThrowExceptionWhenSkuAlreadyExists() {
 
-        // Arrange: Create a mock repository
         ProductRepository repository = mock(ProductRepository.class);
-        ProductService service = new ProductService(repository);
+        InventoryRepository inventoryRepository = mock(InventoryRepository.class);
 
-        // Create a product with an existing SKU
+        ProductService service =
+                new ProductService(repository, inventoryRepository);
+
         Product product = new Product(
                 "Laptop",
                 "LAP-001",
@@ -85,157 +89,34 @@ public class ProductServiceTest {
 
         when(repository.existsBySku("LAP-001")).thenReturn(true);
 
-        // Act & Assert: Verify that an exception is thrown
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
                 () -> service.saveProduct(product)
         );
 
-        // Verify the HTTP status and error message
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         assertEquals(
                 "Product with this SKU already exists",
                 exception.getReason()
         );
 
-        // Verify that the product was never saved
         verify(repository, never()).save(any(Product.class));
+        verify(inventoryRepository, never()).save(any(Inventory.class));
     }
 
-
     /**
-     * Tests that an existing product can be retrieved by its ID.
-     *
-     * Verifies that the service returns the correct product
-     * and calls the repository with the specified ID.
+     * Tests that an existing product can be retrieved
+     * successfully using its ID.
      */
     @Test
     void shouldGetProductById() {
 
-        // Arrange: Create a mock repository
         ProductRepository repository = mock(ProductRepository.class);
-        ProductService service = new ProductService(repository);
+        InventoryRepository inventoryRepository = mock(InventoryRepository.class);
 
-        // Create a test product
-        Product product = new Product(
-               "Laptop",
-               "LAP-001",
-               "Dell laptop",
-                new BigDecimal("7999.00")
-        );
+        ProductService service =
+                new ProductService(repository, inventoryRepository);
 
-        // Simulate finding a product with ID 1
-        when(repository.findById(1L))
-                .thenReturn(Optional.of(product));
-
-        // Act: Get the product by ID
-        Product result = service.getProductById(1L);
-
-        // Assert: Verify the product details
-        assertEquals("Laptop", result.getName());
-        assertEquals("LAP-001", result.getSku());
-
-        // Verify that the repository was called
-        verify(repository).findById(1L);
-    }
-
-    /**
-     * Tests that retrieving a nonexistent product fails.
-     *
-     * Verifies that the service throws a ResponseStatusException
-     * with HTTP status 404 Not Found.
-     */
-    @Test
-    void shouldThrowExceptionWhenProductNotFound() {
-
-        // Arrange: Create a mock repository
-        ProductRepository repository = mock(ProductRepository.class);
-        ProductService service = new ProductService(repository);
-
-        // Simulate that product ID 999 does not exist
-        when(repository.findById(999L))
-                .thenReturn(Optional.empty());
-
-        // Act & Assert: Verify that an exception is thrown
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> service.getProductById(999L)
-        );
-
-        // Verify the HTTP status and error message
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-        assertEquals(
-                "Product not found with id: 999",
-                exception.getReason()
-        );
-
-        // Verify that the repository was called
-        verify(repository).findById(999L);
-    }
-
-    /**
-     * Tests that an existing product can be updated successfully.
-     *
-     * Verifies that the product information is updated correctly
-     * and that the repository saves the modified product.
-     */
-    @Test
-    void shouldUpdateProduct() {
-
-        // Arrange: Create a mock repository
-        ProductRepository repository = mock(ProductRepository.class);
-        ProductService service = new ProductService(repository);
-
-        // Create an existing product
-        Product existingProduct = new Product(
-                "Laptop",
-                "LAP-001",
-                "Old laptop",
-                new BigDecimal("7999.00")
-        );
-
-        // Create updated product information
-        Product updatedProduct = new Product(
-                "Dell Laptop",
-                "LAP-001",
-                "Updated laptop",
-                new BigDecimal("7500.00")
-        );
-
-        // Simulate finding the existing product
-        when(repository.findById(1L))
-                .thenReturn(Optional.of(existingProduct));
-
-        // Simulate saving the updated product
-        when(repository.save(existingProduct))
-                .thenReturn(existingProduct);
-
-        // Act: Update the product
-        Product result = service.updateProduct(1L, updatedProduct);
-
-        // Assert: Verify the updated information
-        assertEquals("Dell Laptop", result.getName());
-        assertEquals("Updated laptop", result.getDescription());
-        assertEquals(new BigDecimal("7500.00"), result.getPrice());
-
-        // Verify that the repository saved the product
-        verify(repository).save(existingProduct);
-    }
-
-    /**
-     * Tests that an existing product can be deleted successfully.
-     *
-     * Verifies that the service finds the product and calls
-     * the repository delete method.
-     */
-    @Test
-    void shouldDeleteProduct() {
-
-        // Arrange: Create a mock repository
-        ProductRepository repository = mock(ProductRepository.class);
-        ProductService service = new ProductService(repository);
-
-        // Create a test product
         Product product = new Product(
                 "Laptop",
                 "LAP-001",
@@ -243,14 +124,114 @@ public class ProductServiceTest {
                 new BigDecimal("7999.00")
         );
 
-        // Simulate finding the product with ID 1
         when(repository.findById(1L))
                 .thenReturn(Optional.of(product));
 
-        // Act: Delete the product
+        Product result = service.getProductById(1L);
+
+        assertEquals("Laptop", result.getName());
+        assertEquals("LAP-001", result.getSku());
+
+        verify(repository).findById(1L);
+    }
+
+    /**
+     * Tests that requesting a nonexistent product
+     * throws HTTP 404 Not Found.
+     */
+    @Test
+    void shouldThrowExceptionWhenProductNotFound() {
+
+        ProductRepository repository = mock(ProductRepository.class);
+        InventoryRepository inventoryRepository = mock(InventoryRepository.class);
+
+        ProductService service =
+                new ProductService(repository, inventoryRepository);
+
+        when(repository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> service.getProductById(999L)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertEquals(
+                "Product not found with id: 999",
+                exception.getReason()
+        );
+
+        verify(repository).findById(999L);
+    }
+
+    /**
+     * Tests that an existing product can be updated
+     * with new information.
+     */
+    @Test
+    void shouldUpdateProduct() {
+
+        ProductRepository repository = mock(ProductRepository.class);
+        InventoryRepository inventoryRepository = mock(InventoryRepository.class);
+
+        ProductService service =
+                new ProductService(repository, inventoryRepository);
+
+        Product existingProduct = new Product(
+                "Laptop",
+                "LAP-001",
+                "Old laptop",
+                new BigDecimal("7999.00")
+        );
+
+        Product updatedProduct = new Product(
+                "Dell Laptop",
+                "LAP-001",
+                "Updated laptop",
+                new BigDecimal("7500.00")
+        );
+
+        when(repository.findById(1L))
+                .thenReturn(Optional.of(existingProduct));
+
+        when(repository.save(existingProduct))
+                .thenReturn(existingProduct);
+
+        Product result = service.updateProduct(1L, updatedProduct);
+
+        assertEquals("Dell Laptop", result.getName());
+        assertEquals("Updated laptop", result.getDescription());
+        assertEquals(new BigDecimal("7500.00"), result.getPrice());
+
+        verify(repository).save(existingProduct);
+    }
+
+    /**
+     * Tests that an existing product can be deleted
+     * successfully from the repository.
+     */
+    @Test
+    void shouldDeleteProduct() {
+
+        ProductRepository repository = mock(ProductRepository.class);
+        InventoryRepository inventoryRepository = mock(InventoryRepository.class);
+
+        ProductService service =
+                new ProductService(repository, inventoryRepository);
+
+        Product product = new Product(
+                "Laptop",
+                "LAP-001",
+                "Dell laptop",
+                new BigDecimal("7999.00")
+        );
+
+        when(repository.findById(1L))
+                .thenReturn(Optional.of(product));
+
         service.deleteProduct(1L);
 
-        // Assert: Verify that the product was deleted
         verify(repository).delete(product);
-}
+    }
 }
