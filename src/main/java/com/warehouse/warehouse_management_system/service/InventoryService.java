@@ -12,6 +12,8 @@ import com.warehouse.warehouse_management_system.model.Product;
 import com.warehouse.warehouse_management_system.repository.ProductRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * Service class responsible for managing inventory operations
  * in the Warehouse Management System.
@@ -171,4 +173,29 @@ return savedInventory;
 
         return savedInventory;
 }
+
+/**
+ * Retrieves all inventory records with low stock.
+ *
+ * An inventory record is considered low in stock
+ * when its quantity is greater than zero and
+ * less than or equal to the product's low stock threshold.
+ *
+ * @return a list of inventory records with low stock
+ */
+public List<Inventory> getLowStockInventory() {
+        return inventoryRepository.findLowStockInventory();
+    }
+
+/**
+ * Retrieves all inventory records that are out of stock.
+ *
+ * An inventory record is considered out of stock
+ * when its quantity is equal to zero.
+ *
+ * @return a list of inventory records with zero stock
+ */
+public List<Inventory> getOutOfStockInventory() {
+        return inventoryRepository.findByQuantity(0);
+    }    
 }

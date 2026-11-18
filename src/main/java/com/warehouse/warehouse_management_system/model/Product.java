@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.persistence.Column;
 
 /**
  * Represents a product in the Warehouse Management System.
@@ -41,6 +42,15 @@ public class Product {
             message = "Price must be greater than zero")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
+
+     /**
+     * Minimum stock threshold used to identify low stock.
+     *
+     * Products with a stock quantity at or below this
+     * threshold are considered low in stock.
+     */
+     @Column(name = "low_stock_threshold", nullable = false)
+     private Integer lowStockThreshold = 10;
 
     /**
      * Default constructor required by JPA.
@@ -143,4 +153,30 @@ public class Product {
     public void setPrice(BigDecimal price) {
         this.price = price;
     }
+
+
+/**
+ * Returns the low stock threshold for this product.
+ *
+ * @return the low stock threshold
+ */
+public Integer getLowStockThreshold() {
+    return lowStockThreshold;
+}
+
+/**
+ * Sets the low stock threshold for this product.
+ *
+ * @param lowStockThreshold the new threshold
+ * @throws IllegalArgumentException if the threshold is negative
+ */
+public void setLowStockThreshold(Integer lowStockThreshold) {
+    if (lowStockThreshold == null || lowStockThreshold < 0) {
+        throw new IllegalArgumentException(
+                "Low stock threshold must be zero or greater"
+        );
+    }
+
+    this.lowStockThreshold = lowStockThreshold;
+}
 }
