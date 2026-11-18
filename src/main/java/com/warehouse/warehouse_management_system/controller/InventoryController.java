@@ -3,8 +3,10 @@ package com.warehouse.warehouse_management_system.controller;
 
 import com.warehouse.warehouse_management_system.model.Inventory;
 import com.warehouse.warehouse_management_system.service.InventoryService;
-
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * REST controller responsible for managing inventory in the
@@ -73,5 +75,32 @@ public Inventory removeStock(
 
     // Decreases the stock quantity for the specified product
     return inventoryService.removeStock(productId, quantity);
+}
+
+/**
+ * Retrieves all inventory records with low stock.
+ *
+ * Returns products whose stock quantity is greater
+ * than zero and less than or equal to their
+ * configured low stock threshold.
+ *
+ * @return a list of inventory records with low stock
+ */
+@GetMapping("/low-stock")
+public List<Inventory> getLowStockInventory() {
+    return inventoryService.getLowStockInventory();
+}
+
+/**
+ * Retrieves all inventory records that are out of stock.
+ *
+ * Returns inventory records where the stock
+ * quantity is equal to zero.
+ *
+ * @return a list of inventory records with zero stock
+ */
+@GetMapping("/out-of-stock")
+public List<Inventory> getOutOfStockInventory() {
+    return inventoryService.getOutOfStockInventory();
 }
 }

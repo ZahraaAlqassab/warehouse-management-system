@@ -17,6 +17,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.util.List;
+import com.warehouse.warehouse_management_system.service.StockMovementService;
+
 /**
  * Unit tests for the InventoryService class.
  *
@@ -332,5 +335,91 @@ void shouldRejectInvalidRemoveQuantity() {
     // Verify that no inventory was saved
     verify(inventoryRepository, never())
             .save(any(Inventory.class));
+}
+
+/**
+ * Tests retrieving inventory records with low stock.
+ *
+ * Verifies that the service returns the inventory
+ * records provided by the repository.
+ */
+@Test
+void shouldGetLowStockInventory() {
+
+    // Arrange: Create mock dependencies
+    InventoryRepository inventoryRepository =
+            mock(InventoryRepository.class);
+
+    ProductRepository productRepository =
+            mock(ProductRepository.class);
+
+    StockMovementService stockMovementService =
+            mock(StockMovementService.class);
+
+    InventoryService service = new InventoryService(
+            inventoryRepository,
+            productRepository,
+            stockMovementService
+    );
+
+    Product product = new Product();
+    product.setLowStockThreshold(10);
+
+    Inventory inventory = new Inventory(product, 9);
+
+    when(inventoryRepository.findLowStockInventory())
+            .thenReturn(List.of(inventory));
+
+    // Act: Retrieve low stock inventory
+    List<Inventory> result = service.getLowStockInventory();
+
+    // Assert: Verify the result
+    assertEquals(1, result.size());
+    assertEquals(9, result.get(0).getQuantity());
+    assertEquals(10,
+            result.get(0).getProduct().getLowStockThreshold());
+
+    verify(inventoryRepository).findLowStockInventory();
+}
+
+/**
+ * Tests retrieving inventory records that are out of stock.
+ *
+ * Verifies that the service requests inventory records
+ * with zero quantity and returns the expected results.
+ */
+@Test
+void shouldGetOutOfStockInventory() {
+
+    // Arrange: Create mock dependencies
+    InventoryRepository inventoryRepository =
+            mock(InventoryRepository.class);
+
+    ProductRepository productRepository =
+            mock(ProductRepository.class);
+
+    StockMovementService stockMovementService =
+            mock(StockMovementService.class);
+
+    InventoryService service = new InventoryService(
+            inventoryRepository,
+            productRepository,
+            stockMovementService
+    );
+
+    Product product = new Product();
+    Inventory inventory = new Inventory(product, 0);
+
+    when(inventoryRepository.findByQuantity(0))
+            .thenReturn(List.of(inventory));
+
+    // Act: Retrieve out-of-stock inventory
+    List<Inventory> result = service.getOutOfStockInventory();
+
+    // Assert: Verify the results
+    assertEquals(1, result.size());
+    assertEquals(0, result.get(0).getQuantity());
+
+    verify(inventoryRepository).findByQuantity(0);
 }
 }
